@@ -1,5 +1,5 @@
 /*****************************************************************************
-* | File        :   PDC.cpp
+* | File        :   PDC.c
 * | Author      :   Youhua Lin
 * | Function    :   Hardware underlying interface
 * | Info        :
@@ -18,7 +18,7 @@
 //set_temp为光机设置值，sor为光机类型
 void LED_P_Set(long set_temp,char sor)
 {
-
+	//添加光机设置程序
 
 }
 

@@ -1,3 +1,16 @@
+/*****************************************************************************
+* | File        :   SLC_Read.cpp
+* | Author      :   Youhua Lin
+* | Function    :   Hardware underlying interface
+* | Info        :
+*                SLC文件解析
+*----------------
+* |	This version:   V1.0
+* | Date        :   2020-7-3
+* | Info        :   Basic version
+*
+******************************************************************************/
+
 //OpenCV的轮廓查找和填充  https://blog.csdn.net/garfielder007/article/details/50866101
 //opencv findContours和drawContours使用方法  https://blog.csdn.net/ecnu18918079120/article/details/78428002
 //OpenCV关于容器的介绍  https://blog.csdn.net/Ahuuua/article/details/80593388
@@ -19,15 +32,15 @@
 #include <sys/ioctl.h>
 #include <linux/fb.h>
 #include <sys/mman.h>
+#include "SLC_Read.h"
 
-#include "parameter.h"
 
 using namespace cv;
 using namespace std;
 
-//int file_continue_flag=0;
-float z_level = 0;
-
+int file_continue_flag=0;//继续解析标识
+int pixel_bits_x=1920,pixel_bits_y=1080;//frambuffer分辨率
+float dim=20;//投影图像放大倍数
 
 //字符数组中查找字符串或字符数组
 //pSrc:原字符
@@ -62,7 +75,9 @@ void OpenSLC(const char file_dir[])
 	
 	/************处理文件头的字符变量，解析完毕后，关闭当前文件*********************/
 	//关于文件的文件头变量
-	char str_temp[300];
+	static char str_temp[300];
+	static char str_parameter[300];
+	
 	float minx, maxx, miny, maxy, minz, maxz;
 
 	FILE * fid = fopen(file_dir,"r");//用于处理文件头的信息
@@ -71,31 +86,30 @@ void OpenSLC(const char file_dir[])
         return;
     }
 	
-	//此处添加文件头处理方式
+	/*此处添加文件头处理,进行信息提取*/
 	fread(str_temp,sizeof(char),300,fid);
 	//-EXTENTS <minx,maxx miny,maxy minz,maxz> CAD模型 x,y,z轴的范围
-	int ssss = FindString(str_temp,300,(char *)"-EXTENTS",8);
-	strncpy(str_temp,str_temp+ssss,300);//提取出XYZ的范围数据
+	int data_adr = FindString(str_temp,300,(char *)"-EXTENTS",8);
+	strcpy(str_parameter,str_temp+data_adr);//提取出XYZ的范围数据
 	
 	//提取XYZ的范围（前6个浮点值）
-	char str[100];//无关变量
-	sscanf(str_temp, "%[(A-Z)|^-]%f%[(^ )|(^,)]%f%[(^ )|(^,)]%f%[(^ )|(^,)]%f%[(^ )|(^,)]%f%[(^ )|(^,)]%f%[(A-Z)|^*]", str, &minx, str, &maxx, str, &miny, str, &maxy, str, &minz, str, &maxz, str);
+	char str[50];//无关变量
+	sscanf(str_parameter, "%[(A-Z)|^-]%f%[(^ )|(^,)]%f%[(^ )|(^,)]%f%[(^ )|(^,)]%f%[(^ )|(^,)]%f%[(^ )|(^,)]%f%[(A-Z)|^*]", str, &minx, str, &maxx, str, &miny, str, &maxy, str, &minz, str, &maxz, str);
 	printf("minx=%.3f,maxx=%.3f,miny=%.3f,maxy=%.3f,minz=%.3f,maxz%.3f\r\n", minx,maxx,miny,maxy,minz,maxz);
 
-	// printf("%s\r\n", str_temp);
-	fprintf(fd_temp,"%s\r\n",str_temp);
+	str_parameter[FindString(str_parameter,strlen(str_parameter),(char *)"\r\n",2)]='\0';
+	// printf("%s\r\n", str_parameter);
+	fprintf(fd_temp,"%s\r\n",str_parameter);
 	fclose(fid);
-	/*********************************************************************************/
-	
+	/*-----------end--------------------------------------------------------------*/
 	
 	int fd; 		//文件描述符
 	char m_data;	//读取到的数据
-	float d = 0;    //d > 0 从上往下看是逆时针
+	float dir = 0;    //d > 0 从上往下看是逆时针
 	// int size=0;		//读取到的数据长度
 	
 	fd = open(file_dir, O_RDONLY);
 	//////////////////////////////
-
 	
 	/*
 	// O_CREAT 若欲打开的文件不存在则自动建立该文件。
@@ -106,7 +120,7 @@ void OpenSLC(const char file_dir[])
 	//【1】CV_8UC1---则可以创建----8位无符号的单通道---灰度图片------grayImg
 	//【2】CV_8UC3---则可以创建----8位无符号的三通道---RGB彩色图像---colorImg 
 	//【3】CV_8UC4--则可以创建-----8位无符号的四通道---带透明色的RGB图像 
-	Mat dst = Mat::zeros(1920, 1080, CV_8UC1);//生成的图片，其分辨率由实际的FrameBuffer来决定
+	Mat dst = Mat::zeros(1080, 1920, CV_8UC1);//生成的图片，其分辨率由实际的FrameBuffer来决定
 	CvScalar color=cvScalar(0);
 	
 	vector<Point> contour;       	 //单个轮廓坐标值
@@ -114,7 +128,6 @@ void OpenSLC(const char file_dir[])
 	
 	
 	vector<int> flag_swap_vector;	//轮廓排序用
-	vector<vector<Point>> vctint;	//轮廓排序用
 	float flag_swap=0;				//轮廓排序用
 	
 	
@@ -134,9 +147,9 @@ void OpenSLC(const char file_dir[])
 		if(i==2048)
 		{
 			printf("file error\r\n");
+			
 			fprintf(fd_temp,"file error\r\n");
 			close(fd);
-			
 			//关闭调试输出的数据文件
 			fclose(fd_temp);
 			//////////////////////
@@ -148,19 +161,19 @@ void OpenSLC(const char file_dir[])
 
 		switch(m_data)
 		{
-		case 0x0d:
-			j=1;
+			case 0x0d:
+					j=1;
 			break;
-		case 0x0a:
-			if(j==1)
-				j=2;
+			case 0x0a:
+				if(j==1)
+					j=2;
 			break;
-		case 0x1a:
-			if(j==2)
-				j=3;
+			case 0x1a:
+				if(j==2)
+					j=3;
 			break;
-		default:
-			j=0;
+			default:
+				j=0;
 			break;
 		}
 		if(j==3)
@@ -194,20 +207,21 @@ void OpenSLC(const char file_dir[])
 		m_data--;
 	}
 	
-	int sss=0;
-	// /******************************************************************/
+	long layer=0;//当前正在解析的层
+	
+	dx=pixel_bits_x/2-(minx+maxx)/2;
+	dy=pixel_bits_y/2-(miny+maxy)/2;
 	// /*************************处理轮廓数据部分*************************/
 	while(1)
 	{
-		sss++;
-		fprintf(fd_temp,"第%d层\r\n",sss);
-		read(fd, &n_layer, 4);
+		layer++;
+		
+		fprintf(fd_temp,"第%ld层\r\n",layer);
 
+		read(fd, &n_layer, 4);
 		fprintf(fd_temp,"Z轴高度=%.5f\r\n",n_layer);
 		
 		read(fd, &n_boundary, 4);
-
-
 		fprintf(fd_temp,"轮廓数=%d\r\n",n_boundary);
 		if(n_boundary==0xFFFFFFFF)  //结束符
 			break;
@@ -224,16 +238,10 @@ void OpenSLC(const char file_dir[])
 			for(j=0;j<n_vertices;j++)
 			{
 				read(fd, &n_polylineX, 4);
-		
-				fprintf(fd_temp,"{%.0f,",(n_polylineX-minx)*20); //偏移后的坐标放大，保存调试数据到文件
-				
+				fprintf(fd_temp,"{%.0f,",n_polylineX*dim+dx); //偏移后的坐标放大，保存调试数据到文件
 				read(fd, &n_polylineY, 4);
-	
-				dx=1080/2-(minx+maxx)/2;
-				dy=1920/2-(miny+maxy)/2;
-				fprintf(fd_temp,"%.0f}\r\n",(n_polylineY-miny)*20); //偏移后的坐标放大，保存调试数据到文件
-				contour.push_back(Point((long)(n_polylineX*20+dx),(long)(n_polylineY*20+dy))); //向轮廓坐标尾部添加点坐标
-
+				fprintf(fd_temp,"%.0f}\r\n",n_polylineY*dim+dy); //偏移后的坐标放大，保存调试数据到文件
+				contour.push_back(Point((long)(n_polylineX*dim+dx),(long)(n_polylineY*dim+dy))); //向轮廓坐标尾部添加点坐标
 			}
 
 			v_contour.push_back(contour);//追加当前轮廓数据到当前层容器变量中
@@ -241,10 +249,9 @@ void OpenSLC(const char file_dir[])
 		}
 		
 
-//////////////////////////////////////////////////////////////////////////////////////////////////////////////
+		//////////////////////////////////////////////////////////////////////////////////////////////////////
 		//通过冒泡法实现容器中轮廓的排序，使得较小轮廓始终位于较大轮廓后，能够判断是否出现交叉异常(注：两个分离的轮廓也会进行排序，不影响填充）
-		int n; //需要排序的轮廓个数
-		n=v_contour.size();//获取轮廓的个数
+		int n=v_contour.size();//获取轮廓的个数
 
 		for(size_t cmpnum = n-1; cmpnum != 0; --cmpnum)
 		{
@@ -261,8 +268,8 @@ void OpenSLC(const char file_dir[])
 				{
 					if(flag_swap_vector[z]!=flag_swap_vector[z+1])
 					{
-						printf("有存在交叉现象\r\n");
-						//这里应该去做相应的异常处理
+						//printf("有存在交叉现象\r\n");
+						//这里应该去做相应的异常处理,也可不做处理
 					}
 				}
 				
@@ -273,24 +280,23 @@ void OpenSLC(const char file_dir[])
 					swap(v_contour[i],v_contour[i+1]);
 				}
 			}
-		}
-			
-//////////////////////////////////////////////////////////////////////////////////////////////////////////////		
+		}	
+		//////////////////////////////////////////////////////////////////////////////////////////////////////////////		
 			
 		//清除图像
 		dst.setTo(Scalar(0));//把像素点值清零
 		
 		for(i=0;i<n_boundary;i++)   //把同一层多个轮廓都放在同一容器中，
 		{                           //显示跟数据处理时 要根据起始点和同轮廓的终点相等来判断是否为同一轮廓  
-			d = 0;
+			dir = 0;
 			for (size_t j = 0; j < v_contour[i].size()-1; j++)
 			{
-				d += -0.5*(v_contour[i][j+1].y+v_contour[i][j].y)*(v_contour[i][j+1].x-v_contour[i][j].x);
+				dir += -0.5*(v_contour[i][j+1].y+v_contour[i][j].y)*(v_contour[i][j+1].x-v_contour[i][j].x);
 			}
 		
 			// a) 存放单通道图像中像素：cvScalar(255);
 			// b) 存放三通道图像中像素：cvScalar(255,255,255);
-			if(d > 0)
+			if(dir > 0)
 			{
 				//cout << "逆时针：counterclockwise"<< endl;
 				fprintf(fd_temp,"逆时\r\n\r\n");
@@ -306,7 +312,15 @@ void OpenSLC(const char file_dir[])
 			}	
 			drawContours( dst,v_contour ,i, color, CV_FILLED );		
 		}
-		while(!file_continue_flag);
+		while(!file_continue_flag)
+		{
+			if(open_file_flag==0)
+			{
+				fclose(fd_temp);
+				close(fd);
+				return;
+			}
+		}
 		file_continue_flag = 0;    // 使下次处于一个阻态
 
 		imwrite("./dst.bmp",dst);
@@ -314,7 +328,7 @@ void OpenSLC(const char file_dir[])
 		v_contour.clear();//删除容器中的所有元素，这里的元素是同一层中所有轮廓数据
 
 
-		printf("第%d层\r\n",sss);
+		printf("第%ld层\r\n",layer);
 		printf("BMP_OK\r\n");	
 	}
 	
@@ -322,55 +336,6 @@ void OpenSLC(const char file_dir[])
 	close(fd);
 }
 
-
-void *thread_1(void *args)//文件处理
-{
-	while(1)
-	{
-		//OpenSLC函数一般情况下为阻态
-		OpenSLC("./jcad.slc");
-		printf("解析结束\r\n");
-		while(1);
-	}
-	return NULL;
-}
-
-void *thread_2(void *args)//外界通信
-{
-	/*
-	内容：1、询问是否解除SLC文件解析阻塞，继续生成位图（注：生成BMP位图比较耗时）
-	*/
-	while(1)
-	{
-		getchar();
-		file_continue_flag = 1;
-	}
-	return NULL;
-}
-
-int slc_main(void)
-{
-	int ret=0;
-	pthread_t id1,id2;
-	
-	ret=pthread_create(&id1,NULL,thread_1,NULL);//开启线程	
-	if(ret)
-	{
-		printf("create pthread error!\n");
-		return -1; 
-	}
-
-	ret=pthread_create(&id2,NULL,thread_2,NULL);//开启线程
-	if(ret)
-	{
-		printf("create pthread error!\n");
-		return  -1; 
-	}
-	pthread_join(id1,NULL);//等待线程id1执行完毕，这里阻塞。等待该线程执行完毕后，继续执行下面的语句，否则从主程序中退出，意味着该程序结束了，线程也就没有机会执行。
-	pthread_join(id2,NULL);//等待线程id2执行完毕，这里阻塞。等待该线程执行完毕后，继续执行下面的语句，否则从主程序中退出，意味着该程序结束了，线程也就没有机会执行。
-	printf("main over!\n");
-	return 0;
-}
 
 
 /* // 顺逆时针判断（从上往下） https://blog.csdn.net/qq_37602930/article/details/80496498  */

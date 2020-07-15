@@ -4,7 +4,7 @@ DIR_BIN = ./bin
 OBJ_C = $(wildcard ${DIR_OBJ}/*.cpp)
 OBJ_O = $(patsubst %.cpp,${DIR_BIN}/%.o,$(notdir ${OBJ_C}))
 
-TARGET = DLP-basic
+TARGET = DLP-basic-server
 #BIN_TARGET = ${DIR_BIN}/${TARGET}
 
 #CC = gcc -std=c99
@@ -22,7 +22,9 @@ ${TARGET}:${OBJ_O}
 ${DIR_BIN}/%.o : $(DIR_OBJ)/%.cpp
 	$(CC) $(CFLAGS) -c  $< -o $@ $(CXXFLAGS)
 	
-	
-clean: 
+
+clean:
 	rm $(DIR_BIN)/*.* 
 	rm $(TARGET) 
+
+
