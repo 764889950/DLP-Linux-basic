@@ -33,7 +33,7 @@
 #include <linux/fb.h>
 #include <sys/mman.h>
 #include "SLC_Read.h"
-
+#include "Framebuffer.h"
 
 using namespace cv;
 using namespace std;
@@ -120,7 +120,7 @@ void OpenSLC(const char file_dir[])
 	//【1】CV_8UC1---则可以创建----8位无符号的单通道---灰度图片------grayImg
 	//【2】CV_8UC3---则可以创建----8位无符号的三通道---RGB彩色图像---colorImg 
 	//【3】CV_8UC4--则可以创建-----8位无符号的四通道---带透明色的RGB图像 
-	Mat dst = Mat::zeros(1080, 1920, CV_8UC1);//生成的图片，其分辨率由实际的FrameBuffer来决定
+	Mat dst = Mat::zeros(pixel_bits_y, pixel_bits_x, CV_8UC1);//生成的图片，其分辨率由实际的FrameBuffer来决定
 	CvScalar color=cvScalar(0);
 	
 	vector<Point> contour;       	 //单个轮廓坐标值
@@ -316,6 +316,7 @@ void OpenSLC(const char file_dir[])
 		{
 			if(open_file_flag==0)
 			{
+				file_continue_flag = 0;    // 使下次处于一个阻态
 				fclose(fd_temp);
 				close(fd);
 				return;
@@ -324,6 +325,7 @@ void OpenSLC(const char file_dir[])
 		file_continue_flag = 0;    // 使下次处于一个阻态
 
 		imwrite("./dst.bmp",dst);
+		show_bmp("./dst.bmp",pfb, pixel_bits_x, pixel_bits_y);
 		
 		v_contour.clear();//删除容器中的所有元素，这里的元素是同一层中所有轮廓数据
 

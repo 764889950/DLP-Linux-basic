@@ -7,6 +7,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <ctype.h>
+#include "strstr.h"
 
 #define Data_SIZE 300
 char buf_recv[Data_SIZE],buf_send[Data_SIZE]; //套接字发送接收变量 
@@ -82,10 +83,10 @@ void print_usage()
     printf("control-client help\n");
     printf("\tShow this help message\n");
     printf("\n");
-    printf("control-client slice [-p <file_print.slc>] [-j <settings.json>] [-s <settingkey>=<value>]\n");
+    printf("control-client slice [-p <file_print.slc>] [-j <settings.json>] [-r <setting>] [-s <settingkey>=<value>]\n");
     printf("  -p\n\topen a 3D model.\n");
     printf("  -j\n\tLoad settings.def.json file to register all settings and their defaults.\n");
-	printf("  -r\n\tclose a 3D model.\n");
+	printf("  -r\n\tcontinue or close a 3D model.\n");
     printf("  -s <setting>=<value>\n\tSet a setting to a value\n");
     printf("\n");
 
@@ -94,7 +95,6 @@ void print_usage()
 void slice(int argc, char **argv)
 {
 	char open_print_file[300]="open_print_file:";
-	char close_print_file[300]="close_print_file:";
     for(int argn = 2; argn < argc; argn++)
     {
         char* str = argv[argn];
@@ -107,11 +107,20 @@ void slice(int argc, char **argv)
 				case 'p':
 					argn++;
 					strcat(open_print_file,argv[argn]); //连接两个字符串，连接后的字符串放在str_temp中
-					socket_send(open_print_file);//发送包含文件名的字符串到server并打开
+					socket_send(open_print_file);//发送包含文件名的字符串到server
 					break;	
 				case 'r':
 					argn++;
-					socket_send(close_print_file);//发送包含文件名的字符串到server并打开
+					if(my_strstr(argv[argn],"close",Data_SIZE)!=NULL)
+					{
+						printf("close\n");
+						socket_send("close_print_file");//发送关闭文件指令
+					}
+					if(my_strstr(argv[argn],"continue",Data_SIZE)!=NULL)
+					{
+						printf("continue\n");
+						socket_send("continue_print_file");//发送关闭文件指令
+					}
 					break;	
 					
 				case 'j':

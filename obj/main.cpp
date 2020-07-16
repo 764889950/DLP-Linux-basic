@@ -12,24 +12,13 @@
 #include "DEV_Config.h"
 #include "SLC_Read.h"
 #include "strstr.h"
+#include "Framebuffer.h"
 
 #define Data_SIZE 300
 char buf_recv[Data_SIZE],buf_send[Data_SIZE]; //套接字发送接收变量 
 char open_file_flag=0;//打开关闭文件标识
 char print_file_name[300]={0};//打印用的slc文件
 
-//c++11 no longer supplies a strcasecmp, so define our own version.
-static int stringcasecompare(const char* a, const char* b)
-{
-    while(*a && *b)
-    {
-        if (tolower(*a) != tolower(*b))
-            return tolower(*a) - tolower(*b);
-        a++;
-        b++;
-    }
-    return *a - *b;
-}
 
 void *thread_1(void *args)//套接字通信
 {
@@ -78,6 +67,11 @@ void *thread_1(void *args)//套接字通信
 			printf("close_print_file\n"); 
 		}
 
+		if(my_strstr(buf_recv,"continue_print_file",Data_SIZE)!=NULL)
+		{
+			file_continue_flag = 1;
+		}
+
 		//-------------------------------------------
 		
 		
@@ -93,7 +87,7 @@ void *thread_1(void *args)//套接字通信
 		}
 	}
 
-    shutdown(client_sockfd,2);  
+    shutdown(client_sockfd,2); 
     shutdown(server_sockfd,2); 
 	return NULL;
 }
@@ -117,6 +111,9 @@ void *thread_3(void *args)
 	/*
 	这里添加带阻塞的任务函数
 	*/
+	//初始化
+	Framebuffer_init();
+	
 	while(1)
 	{
 		if(open_file_flag==1)
@@ -128,6 +125,7 @@ void *thread_3(void *args)
 			OpenSLC(str_temp);
 			open_file_flag=0;
 			printf("关闭打印文件\n"); 
+			Framebuffer_end();
 		}
 	}
 	return NULL;

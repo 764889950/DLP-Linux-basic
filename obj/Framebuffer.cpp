@@ -25,11 +25,14 @@
 #include <linux/fb.h>
 #include <sys/mman.h>
 #include <stdlib.h>
+#include "Framebuffer.h"
+#include "SLC_Read.h"
+#include "Framebuffer.h"
 
 using namespace std;
+
 #define FBDEVICE "/dev/fb0"
 
-typedef struct pixel{int x;int y;int bits_per_pix;} pixel_Framebuffer;
 pixel_Framebuffer pixel_bits;
 static int screensize = 0;
 unsigned char *pfb = NULL;
@@ -64,14 +67,14 @@ void read_Framebuffer(pixel_Framebuffer &temp)
 	//计算屏幕的总大小（字节）
 	screensize = vinfo.xres * vinfo.yres * vinfo.bits_per_pixel / 8;//除8表示每个字节8位，bits_per_pixel单位为位
 	
-	// printf("屏幕的总大小screensize=%d byte\n",screensize);
+	printf("屏幕的总大小screensize=%d byte\n",screensize);
 
 	//xres_virtual yres_virtual定义了framebuffer内存中一帧的尺寸。xres_virtual yres_virtual必定大于或者等于xres yres，
-	// printf("显示信息->xres：%d\n",vinfo.xres);
-	// printf("显示信息->yres：%d\n",vinfo.yres);
-	// printf("显示信息->xres_virtual：%d\n",vinfo.xres_virtual);
-	// printf("显示信息->yres_virtual：%d\n",vinfo.yres_virtual);
-	// printf("显示信息->颜色深度：%d\n",vinfo.bits_per_pixel);
+	printf("显示信息->xres：%d\n",vinfo.xres);
+	printf("显示信息->yres：%d\n",vinfo.yres);
+	printf("显示信息->xres_virtual：%d\n",vinfo.xres_virtual);
+	printf("显示信息->yres_virtual：%d\n",vinfo.yres_virtual);
+	printf("显示信息->颜色深度：%d\n",vinfo.bits_per_pixel);
 
 	temp.x=vinfo.xres;
 	temp.y=vinfo.yres;
@@ -229,7 +232,7 @@ int show_bmp(const char bmp_path[], unsigned char *pfb, unsigned int width, unsi
 	
 	// printf("show_bmp function over\n");
 	
-	return(0 );
+	return(0);
 }
 
 
@@ -240,6 +243,8 @@ void Framebuffer_init()
 	//Framebuffr初始化并打开
     fb_fd = open(FBDEVICE, O_RDWR);
 	read_Framebuffer(pixel_bits);
+	pixel_bits_x=pixel_bits.x;
+	pixel_bits_y=pixel_bits.y;
 	//内存映射
 	screensize = pixel_bits.x * pixel_bits.y * pixel_bits.bits_per_pix / 8;//除8表示每个字节8位，bits_per_pixel单位为位
 	pfb = (unsigned char *)mmap(NULL, screensize, PROT_READ | PROT_WRITE, MAP_SHARED, fb_fd, 0);
