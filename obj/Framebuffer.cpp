@@ -3,7 +3,7 @@
 * | Author      :   Youhua Lin
 * | Function    :   Hardware underlying interface
 * | Info        :
-*                SLC文件解析
+*                Framebuffer
 *----------------
 * |	This version:   V1.0
 * | Date        :   2020-7-15
@@ -67,14 +67,14 @@ void read_Framebuffer(pixel_Framebuffer &temp)
 	//计算屏幕的总大小（字节）
 	screensize = vinfo.xres * vinfo.yres * vinfo.bits_per_pixel / 8;//除8表示每个字节8位，bits_per_pixel单位为位
 	
-	printf("屏幕的总大小screensize=%d byte\n",screensize);
+	//printf("屏幕的总大小screensize=%d byte\n",screensize);
 
 	//xres_virtual yres_virtual定义了framebuffer内存中一帧的尺寸。xres_virtual yres_virtual必定大于或者等于xres yres，
-	printf("显示信息->xres：%d\n",vinfo.xres);
-	printf("显示信息->yres：%d\n",vinfo.yres);
-	printf("显示信息->xres_virtual：%d\n",vinfo.xres_virtual);
-	printf("显示信息->yres_virtual：%d\n",vinfo.yres_virtual);
-	printf("显示信息->颜色深度：%d\n",vinfo.bits_per_pixel);
+	//printf("显示信息->xres：%d\n",vinfo.xres);
+	//printf("显示信息->yres：%d\n",vinfo.yres);
+	//printf("显示信息->xres_virtual：%d\n",vinfo.xres_virtual);
+	//printf("显示信息->yres_virtual：%d\n",vinfo.yres_virtual);
+	//printf("显示信息->颜色深度：%d\n",vinfo.bits_per_pixel);
 
 	temp.x=vinfo.xres;
 	temp.y=vinfo.yres;

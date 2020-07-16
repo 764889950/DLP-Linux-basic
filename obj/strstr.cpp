@@ -14,6 +14,7 @@
 #include <stdio.h>
 #include <iconv.h>
 #include <string.h>
+#include <ctype.h>
 #include "strstr.h"
 
 void reboot(void)
@@ -84,6 +85,20 @@ char* my_strstr(const char *str1, const char *str2,int len_str)//str2为字符�
 	return(NULL);
 }
 
+
+
+//c++11 no longer supplies a strcasecmp, so define our own version.
+int stringcasecompare(const char* a, const char* b)
+{
+    while(*a && *b)
+    {
+        if (tolower(*a) != tolower(*b))
+            return tolower(*a) - tolower(*b);
+        a++;
+        b++;
+    }
+    return *a - *b;
+}
 
 
 int code_convert(char *from_charset, char *to_charset, char *inbuf, size_t inlen,  

@@ -16,6 +16,7 @@
 
 void reboot(void);
 char* my_strstr(const char *str1, const char *str2,int len_str);
+int stringcasecompare(const char* a, const char* b);
 int u2g(char *inbuf, size_t inlen, char *outbuf, size_t outlen);
 
 #endif

@@ -39,7 +39,7 @@ using namespace cv;
 using namespace std;
 
 int file_continue_flag=0;//继续解析标识
-int pixel_bits_x=1920,pixel_bits_y=1080;//frambuffer分辨率
+int pixel_bits_x=1280,pixel_bits_y=800;//frambuffer分辨率
 float dim=20;//投影图像放大倍数
 
 //字符数组中查找字符串或字符数组
@@ -69,7 +69,7 @@ void OpenSLC(const char file_dir[])
 {
 	int dx=0,dy=0;	
 	FILE *fd_temp;  //将调试数据保存到文本区
-
+	
 	//保存调试数据到文件夹
 	fd_temp=fopen("./temp.txt", "w+");
 	
@@ -83,6 +83,7 @@ void OpenSLC(const char file_dir[])
 	FILE * fid = fopen(file_dir,"r");//用于处理文件头的信息
 	if(fid == NULL)
     {
+		printf("file_open_error");
         return;
     }
 	
@@ -90,12 +91,12 @@ void OpenSLC(const char file_dir[])
 	fread(str_temp,sizeof(char),300,fid);
 	//-EXTENTS <minx,maxx miny,maxy minz,maxz> CAD模型 x,y,z轴的范围
 	int data_adr = FindString(str_temp,300,(char *)"-EXTENTS",8);
-	strcpy(str_parameter,str_temp+data_adr);//提取出XYZ的范围数据
+	strncpy(str_parameter,str_temp+data_adr,100);//提取出XYZ的范围数据
 	
 	//提取XYZ的范围（前6个浮点值）
 	char str[50];//无关变量
 	sscanf(str_parameter, "%[(A-Z)|^-]%f%[(^ )|(^,)]%f%[(^ )|(^,)]%f%[(^ )|(^,)]%f%[(^ )|(^,)]%f%[(^ )|(^,)]%f%[(A-Z)|^*]", str, &minx, str, &maxx, str, &miny, str, &maxy, str, &minz, str, &maxz, str);
-	printf("minx=%.3f,maxx=%.3f,miny=%.3f,maxy=%.3f,minz=%.3f,maxz%.3f\r\n", minx,maxx,miny,maxy,minz,maxz);
+	//printf("minx=%.3f,maxx=%.3f,miny=%.3f,maxy=%.3f,minz=%.3f,maxz%.3f\r\n", minx,maxx,miny,maxy,minz,maxz);
 
 	str_parameter[FindString(str_parameter,strlen(str_parameter),(char *)"\r\n",2)]='\0';
 	// printf("%s\r\n", str_parameter);
@@ -129,8 +130,6 @@ void OpenSLC(const char file_dir[])
 	
 	vector<int> flag_swap_vector;	//轮廓排序用
 	float flag_swap=0;				//轮廓排序用
-	
-	
 
 	unsigned int i=0;
 	unsigned int j=0;
@@ -191,7 +190,7 @@ void OpenSLC(const char file_dir[])
 	/******************************************************************/
 	/**************************处理样本表部分**************************/
 	read(fd, &m_data, 1);
-	printf("Sampling Table Size=%x\r\n", m_data);
+	//printf("Sampling Table Size=%x\r\n", m_data);
 	// fprintf(fd_temp,"Sampling Table Size=%x\r\n",m_data);
 	while(m_data)
 	{
@@ -317,6 +316,7 @@ void OpenSLC(const char file_dir[])
 			if(open_file_flag==0)
 			{
 				file_continue_flag = 0;    // 使下次处于一个阻态
+				v_contour.clear();//删除容器中的所有元素，这里的元素是同一层中所有轮廓数据
 				fclose(fd_temp);
 				close(fd);
 				return;
@@ -330,8 +330,8 @@ void OpenSLC(const char file_dir[])
 		v_contour.clear();//删除容器中的所有元素，这里的元素是同一层中所有轮廓数据
 
 
-		printf("第%ld层\r\n",layer);
-		printf("BMP_OK\r\n");	
+		//printf("第%ld层\r\n",layer);
+		//printf("BMP_OK\r\n");	
 	}
 	
 	fclose(fd_temp);

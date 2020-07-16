@@ -8,7 +8,6 @@
 #include <sys/socket.h>    
 #include <netinet/in.h>  
 #include <arpa/inet.h>  
-#include <ctype.h>
 #include "DEV_Config.h"
 #include "SLC_Read.h"
 #include "strstr.h"
@@ -18,6 +17,7 @@
 char buf_recv[Data_SIZE],buf_send[Data_SIZE]; //套接字发送接收变量 
 char open_file_flag=0;//打开关闭文件标识
 char print_file_name[300]={0};//打印用的slc文件
+
 
 
 void *thread_1(void *args)//套接字通信
@@ -38,14 +38,14 @@ void *thread_1(void *args)//套接字通信
     bind(server_sockfd,(struct sockaddr *)&server_address,server_len);  
       
     listen(server_sockfd,5);  
-    printf("server waiting for connect\n");  
+    //printf("server waiting for connect\n");  
       
     client_len = sizeof(client_address);  
 	
 	while(1)
 	{
 		client_sockfd = accept(server_sockfd,(struct sockaddr *)&client_address,(socklen_t *)&client_len);  
-		printf("连接成功\n"); 
+		//printf("连接成功\n"); 
 		
 		if(recv(client_sockfd,buf_recv,Data_SIZE,0) == -1)  
 		{  
@@ -53,23 +53,28 @@ void *thread_1(void *args)//套接字通信
 			exit(EXIT_FAILURE);  
 		}  
 
+		//printf("%d\n",stringcasecompare(buf_recv,"open_print_file:"));
 		//添加对buf_recv的操作
 		//-------------------------------------------
-		if(my_strstr(buf_recv,"open_print_file:",Data_SIZE)!=NULL)
+		if(stringcasecompare(buf_recv,"open_print_file:")>0)
 		{
 			strcpy(print_file_name,&buf_recv[strlen("open_print_file:")]);
 			open_file_flag=1;//打开打印文件
-			printf("open_print_file:%s\n",&buf_recv[strlen("open_print_file:")]); 
+			//printf("open_print_file:%s\n",&buf_recv[strlen("open_print_file:")]); 
 		}
-		if(my_strstr(buf_recv,"close_print_file",Data_SIZE)!=NULL)
+		if(stringcasecompare(buf_recv,"close_print_file")==0)
 		{
 			open_file_flag=0;//关闭打印文件
-			printf("close_print_file\n"); 
+			//printf("close_print_file\n"); 
 		}
 
-		if(my_strstr(buf_recv,"continue_print_file",Data_SIZE)!=NULL)
+		if(stringcasecompare(buf_recv,"continue_print_file")==0)
 		{
-			file_continue_flag = 1;
+			if(open_file_flag==1)
+			{
+				file_continue_flag = 1;
+				//printf("continue_print_file\n"); 
+			}
 		}
 
 		//-------------------------------------------
@@ -77,7 +82,7 @@ void *thread_1(void *args)//套接字通信
 		
 		// printf("receive from client is %c\n",char_recv);  
 		
-		printf("receive from client is %s\n",buf_recv); 
+		//printf("receive from client is %s\n",buf_recv); 
 
 		strcpy(buf_send,buf_recv);//给buf_send赋值，准备发送
 		if(send(client_sockfd,buf_send,Data_SIZE,0) == -1)  
@@ -85,6 +90,7 @@ void *thread_1(void *args)//套接字通信
 			perror("send");  
 			exit(EXIT_FAILURE);  
 		}
+		//memset(buf_recv,'\0',sizeof(buf_recv));
 	}
 
     shutdown(client_sockfd,2); 
@@ -100,8 +106,8 @@ void *thread_2(void *args)
 	*/
 	while(1)
 	{
-		getchar();
-		file_continue_flag = 1;
+		//getchar();
+		//file_continue_flag = 1;
 	}
 	return NULL;
 }
@@ -112,20 +118,22 @@ void *thread_3(void *args)
 	这里添加带阻塞的任务函数
 	*/
 	//初始化
-	Framebuffer_init();
-	
+	sleep(5);
+	printf("\033[?25l\n");
 	while(1)
 	{
 		if(open_file_flag==1)
 		{
-			printf("打开文件：%s\n",print_file_name); 
-			// OpenSLC("./jcad.slc");
+			//printf("打开文件：%s\n",print_file_name); 
+			//OpenSLC("./jcad.slc");
 			char str_temp[300]="./";
 			strcat(str_temp,print_file_name); //连接两个字符串，连接后的字符串放在str_temp中
-			OpenSLC(str_temp);
-			open_file_flag=0;
-			printf("关闭打印文件\n"); 
+			Framebuffer_init();
+			//OpenSLC(str_temp);
+			OpenSLC(print_file_name);
 			Framebuffer_end();
+			open_file_flag=0;
+			//printf("关闭打印文件\n"); 
 		}
 	}
 	return NULL;
@@ -139,7 +147,7 @@ int main(void)
 	{
 		exit(0);
 	}
-
+	
 	int ret=0;
 	pthread_t id1,id2,id3;
 	
